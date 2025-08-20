@@ -9,6 +9,7 @@ It includes three main steps:
 2. **Testing IMU data accuracy** (`tesy_im948_ok_with_teensy`)
 3. **Checking SD card logging** (`test_sd_card_logged/test`)
 
+4. ![usb to ttl](/image.png)
 ---
 
 ## 📦 Files
