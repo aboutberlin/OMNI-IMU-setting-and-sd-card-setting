@@ -52,7 +52,7 @@ It includes three main steps:
 ---
 
 ### Pairing Procedure
-
+0. IM948 menu: https://www.yuque.com/docs/share/de4f810f-4790-4866-9b17-657be095f2bb?# 
 1. Download TR100 PC tool:
    [Baidu Link](https://pan.baidu.com/s/1QrPmc_ImhZfWZHYgccVJXw?pwd=vxec) (Code: `vxec`)
 2. Open the tool → Click **Connect Bluetooth**
