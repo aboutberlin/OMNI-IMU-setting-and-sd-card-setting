@@ -96,3 +96,21 @@ It includes three main steps:
 3. **Verify SD Card Logging** (`test_sd_card_logged/test`)
 4. Once stable, integrate into your **main.ino** project
 
+# IMU Initialization Issue and Solution
+
+During testing, we confirmed that the IMU initialization problem is **not caused by the IMU itself**, but by the **Serial communication between the TR100 and the Teensy (Serial7/Serial6)**.  
+
+The key function is `imu.INIT()`, which starts `Serial7.begin()` and `Serial6.begin()`. In theory, the data frames from TR100 should arrive immediately. In practice, however, we sometimes only receive valid frames after about 10 seconds.  
+
+Since the IMU offset calibration (`imu.mean`) relies on the first 5 seconds of incoming data, when no new frames are received it defaults to `0` as the offset. Once real data finally arrives, the system interprets the angle as `frame - 0`, which produces incorrect readings (e.g., jumping close to **100°** instead of the expected ~3° offset).  
+
+The root cause appears to be **Serial blocking at 460 kHz**. This high baud rate, combined with PCB layout and potential shielding issues between the two nearby UART ports, results in delayed valid data reception. Addressing this at the hardware/PCB level is difficult.  
+
+### Practical Engineering Solution
+Instead of redesigning the hardware, the issue can be resolved in software by:
+1. Allowing **longer initialization time** before offset calibration.  
+2. Adding a **check to ensure the offset is non-zero** before accepting it.  
+3. Verifying that **IMU initialization is successful** before proceeding.  
+
+This approach avoids incorrect offset calibration and ensures stable IMU behavior without hardware redesign.
+
