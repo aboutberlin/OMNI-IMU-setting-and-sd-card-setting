@@ -106,11 +106,54 @@ Since the IMU offset calibration (`imu.mean`) relies on the first 5 seconds of i
 
 The root cause appears to be **Serial blocking at 460 kHz**. This high baud rate, combined with PCB layout and potential shielding issues between the two nearby UART ports, results in delayed valid data reception. Addressing this at the hardware/PCB level is difficult.  
 
-### Practical Engineering Solution
-Instead of redesigning the hardware, the issue can be resolved in software by:
+---
+
+## Practical Engineering Solution
+
+Instead of redesigning the hardware, the issue can be resolved in software by:  
 1. Allowing **longer initialization time** before offset calibration.  
 2. Adding a **check to ensure the offset is non-zero** before accepting it.  
 3. Verifying that **IMU initialization is successful** before proceeding.  
 
-This approach avoids incorrect offset calibration and ensures stable IMU behavior without hardware redesign.
+In addition, the initialization routine in `imit-main` has been updated to handle the specific failure mode observed during testing (IMU starting at ~97° when upright). If the system fails to read valid frames during initialization, it applies a **fallback default offset (97°)** to avoid zero-offset errors.  
+
+### Updated Initialization Code (Excerpt)
+
+```cpp
+void IMU_Adapter::INIT_MEAN() {
+    if (offset_locked) {
+        Serial.println("[IMU] INIT_MEAN skipped (already locked).");
+        return;
+    }
+
+    // Preheat: clear buffer to avoid dirty data
+    while (SerialImuLeft.available())  SerialImuLeft.read();
+    while (SerialImuRight.available()) SerialImuRight.read();
+    delay(2000);
+
+    const int N = 200;
+    float sumL = 0, sumR = 0;
+
+    for (int i=0; i<N; i++) {
+        READ();
+        sumL += AngleXLeft;
+        sumR += AngleXRight;
+        delay(5);
+    }
+
+    float offL_tmp = sumL / N;
+    float offR_tmp = sumR / N;
+
+    // Sanity check: if not in [60°, 120°], fall back to 97°
+    auto sane = [](float x){ return (x >= 60.f && x <= 120.f) ? x : 97.f; };
+
+    offL = sane(offL_tmp);
+    offR = sane(offR_tmp);
+
+    offset_locked = true;
+
+    Serial.printf("[IMU] INIT_MEAN done: rawL=%.2f rawR=%.2f -> offL=%.2f offR=%.2f\n",
+                  offL_tmp, offR_tmp, offL, offR);
+}
+
 
